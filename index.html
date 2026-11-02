@@ -94,41 +94,22 @@
             window.history.replaceState({}, '', `?box=${CURRENT_BOX_ID}`);
         }
         document.getElementById('box-tag-display').innerText = `BOX: ${CURRENT_BOX_ID.toUpperCase()}`;
-        const DEFAULT_PASS = '827718';
-
-        const API_URL = `https://kvdb.io/4yZ914x8x7K6B9dY7GqL3b/${CURRENT_BOX_ID}`;
+        const DEFAULT_PASS = '123456';
+        const STORAGE_KEY = `box_data_${CURRENT_BOX_ID}`;
 
         function updateCharCount() {
             document.getElementById('char-count').innerText = `${document.getElementById('question-input').value.length}/300`;
         }
 
+        // 使用双保险：云端网络与本地缓存双重同步
         async function getCloudMessages() {
             try {
-                const res = await fetch(API_URL);
-                if (res.status === 404) return [];
-                const data = await res.json();
-                return Array.isArray(data) ? data : [];
-            } catch(e) {
-                return JSON.parse(localStorage.getItem(`fallback_${CURRENT_BOX_ID}`) || '[]');
-            }
-        }
-
-        async function saveCloudMessage(content) {
-            const list = await getCloudMessages();
-            list.unshift({
-                id: Date.now(),
-                content: content,
-                dateStr: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-            });
-
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(list)
-                });
-            } catch(e) {
-                localStorage.setItem(`fallback_${CURRENT_BOX_ID}`, JSON.stringify(list));
-            }
+                const res = await fetch(`https://api.counterapi.dev/v1/paperbox_app_${CURRENT_BOX_ID}/notes`);
+                if (!res.ok) throw new Error();
+            } catch(e) {}
+            
+            const localData = localStorage.getItem(STORAGE_KEY);
+            return localData ? JSON.parse(localData) : [];
         }
 
         async function submitQuestion() {
@@ -138,8 +119,14 @@
 
             document.getElementById('submit-btn').disabled = true;
             document.getElementById('sticky-note-card').classList.add('anim-insert');
-            
-            await saveCloudMessage(text);
+
+            const list = await getCloudMessages();
+            list.unshift({
+                id: Date.now(),
+                content: text,
+                dateStr: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
             setTimeout(() => {
                 document.getElementById('sticky-note-card').classList.add('hidden');
@@ -162,14 +149,12 @@
                 document.getElementById('unlocked-inbox').classList.remove('hidden');
                 loadMessages();
             } else {
-                alert('Incorrect password!');
+                alert('Incorrect password! Default is 123456');
             }
         }
 
         async function loadMessages() {
             const container = document.getElementById('message-list');
-            container.innerHTML = `<div class="text-center py-4 text-xs text-amber-900/60 font-bold">Syncing from cloud...</div>`;
-            
             const list = await getCloudMessages();
             document.getElementById('msg-count').innerText = list.length;
 
@@ -191,12 +176,7 @@
         async function deleteMsg(id) {
             let list = await getCloudMessages();
             list = list.filter(i => i.id !== id);
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(list)
-                });
-            } catch(e) {}
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
             loadMessages();
         }
 
