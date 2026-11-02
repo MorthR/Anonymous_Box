@@ -35,13 +35,13 @@
     <header class="w-full max-w-md mx-auto flex justify-between items-center bg-white/40 backdrop-blur-sm p-3 rounded-2xl mb-4 shadow-sm">
         <div class="flex items-center space-x-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
-            <span id="box-tag-display" class="text-xs font-mono font-bold text-amber-950">BOX: LOADING...</span>
+            <span class="text-xs font-mono font-bold text-amber-950">ANONYMOUS BOX</span>
         </div>
         <button onclick="copyShareLink()" class="px-3 py-1.5 bg-amber-900 text-amber-100 text-xs font-medium rounded-xl shadow">Copy Link</button>
     </header>
 
     <main class="w-full max-w-md mx-auto flex-grow flex flex-col justify-center">
-        <div id="cardboard-box" class="paper-box rounded-3xl p-6 relative overflow-hidden">
+        <form id="question-form" action="https://formspree.io/f/xbggplpb" method="POST" onsubmit="handleSubmit(event)" class="paper-box rounded-3xl p-6 relative overflow-hidden">
             <div class="w-full mb-6 flex flex-col items-center">
                 <div class="w-56 h-3.5 box-slit rounded-full relative flex items-center justify-center">
                     <div class="w-48 h-1 bg-black/60 rounded-full"></div>
@@ -54,130 +54,59 @@
                     <span>ANONYMOUS NOTE</span>
                     <span id="char-count">0/300</span>
                 </div>
-                <textarea id="question-input" rows="4" maxlength="300" placeholder="Ask me anything anonymously..." class="w-full bg-transparent text-amber-950 placeholder-amber-900/40 text-sm focus:outline-none resize-none" oninput="updateCharCount()"></textarea>
+                <textarea id="question-input" name="message" rows="4" maxlength="300" placeholder="Ask me anything anonymously..." class="w-full bg-transparent text-amber-950 placeholder-amber-900/40 text-sm focus:outline-none resize-none" oninput="updateCharCount()" required></textarea>
                 <div class="flex justify-end mt-3 pt-2 border-t border-amber-900/10">
-                    <button id="submit-btn" onclick="submitQuestion()" class="px-5 py-2 bg-amber-900 text-amber-50 text-xs font-bold rounded-xl shadow">Put into Box</button>
+                    <button type="submit" id="submit-btn" class="px-5 py-2 bg-amber-900 text-amber-50 text-xs font-bold rounded-xl shadow">Put into Box</button>
                 </div>
             </div>
 
             <div id="success-view" class="hidden py-8 flex flex-col items-center text-center space-y-3">
                 <p class="text-sm font-bold text-amber-950">The note has been dropped into the box!</p>
-                <button onclick="resetNoteForm()" class="text-xs font-bold text-amber-900 underline">Send another note</button>
+                <button type="button" onclick="resetNoteForm()" class="text-xs font-bold text-amber-900 underline">Send another note</button>
             </div>
-        </div>
+        </form>
     </main>
-
-    <footer class="w-full max-w-md mx-auto pt-6">
-        <div id="lock-panel" class="bg-white/40 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
-            <span class="text-xs font-bold text-amber-950">Owner Inbox</span>
-            <div class="flex space-x-1.5">
-                <input type="password" id="pass-input" placeholder="Password" class="w-24 px-2 py-1 bg-white border rounded-lg text-xs">
-                <button onclick="unlockBoxInbox()" class="px-3 py-1 bg-amber-900 text-amber-100 text-xs font-bold rounded-lg">Unlock</button>
-            </div>
-        </div>
-        <div id="unlocked-inbox" class="hidden space-y-3 mt-4">
-            <div class="flex justify-between items-center px-1">
-                <span class="text-xs font-bold text-amber-950">Received <span id="msg-count">0</span> notes</span>
-                <button onclick="loadMessages()" class="text-xs font-bold text-amber-900 underline">Refresh</button>
-            </div>
-            <div id="message-list" class="space-y-3 max-h-72 overflow-y-auto pr-1"></div>
-        </div>
-    </footer>
 
     <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-950 text-amber-100 text-xs px-4 py-2 rounded-full opacity-0 transition-opacity">Link copied to clipboard</div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let CURRENT_BOX_ID = urlParams.get('box');
-        if (!CURRENT_BOX_ID) {
-            CURRENT_BOX_ID = 'box_' + Math.random().toString(36).substring(2, 8);
-            window.history.replaceState({}, '', `?box=${CURRENT_BOX_ID}`);
-        }
-        document.getElementById('box-tag-display').innerText = `BOX: ${CURRENT_BOX_ID.toUpperCase()}`;
-        const DEFAULT_PASS = '123456';
-        const STORAGE_KEY = `box_data_${CURRENT_BOX_ID}`;
-
         function updateCharCount() {
             document.getElementById('char-count').innerText = `${document.getElementById('question-input').value.length}/300`;
         }
 
-        // 使用双保险：云端网络与本地缓存双重同步
-        async function getCloudMessages() {
-            try {
-                const res = await fetch(`https://api.counterapi.dev/v1/paperbox_app_${CURRENT_BOX_ID}/notes`);
-                if (!res.ok) throw new Error();
-            } catch(e) {}
-            
-            const localData = localStorage.getItem(STORAGE_KEY);
-            return localData ? JSON.parse(localData) : [];
-        }
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
 
-        async function submitQuestion() {
-            const input = document.getElementById('question-input');
-            const text = input.value.trim();
-            if (!text) { alert('Please write something on the note first!'); return; }
-
-            document.getElementById('submit-btn').disabled = true;
             document.getElementById('sticky-note-card').classList.add('anim-insert');
 
-            const list = await getCloudMessages();
-            list.unshift({
-                id: Date.now(),
-                content: text,
-                dateStr: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-            });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'Accept': 'application/json' }
+                });
 
-            setTimeout(() => {
-                document.getElementById('sticky-note-card').classList.add('hidden');
+                setTimeout(() => {
+                    document.getElementById('sticky-note-card').classList.add('hidden');
+                    document.getElementById('sticky-note-card').classList.remove('anim-insert');
+                    document.getElementById('success-view').classList.remove('hidden');
+                    btn.disabled = false;
+                    form.reset();
+                    updateCharCount();
+                }, 800);
+            } catch (error) {
+                alert('Failed to send, please try again.');
+                btn.disabled = false;
                 document.getElementById('sticky-note-card').classList.remove('anim-insert');
-                document.getElementById('success-view').classList.remove('hidden');
-                document.getElementById('submit-btn').disabled = false;
-            }, 800);
+            }
         }
 
         function resetNoteForm() {
-            document.getElementById('question-input').value = '';
-            updateCharCount();
             document.getElementById('success-view').classList.add('hidden');
             document.getElementById('sticky-note-card').classList.remove('hidden');
-        }
-
-        function unlockBoxInbox() {
-            if (document.getElementById('pass-input').value === DEFAULT_PASS) {
-                document.getElementById('lock-panel').classList.add('hidden');
-                document.getElementById('unlocked-inbox').classList.remove('hidden');
-                loadMessages();
-            } else {
-                alert('Incorrect password! Default is 123456');
-            }
-        }
-
-        async function loadMessages() {
-            const container = document.getElementById('message-list');
-            const list = await getCloudMessages();
-            document.getElementById('msg-count').innerText = list.length;
-
-            if (list.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-amber-900/60 font-bold">The box is empty</div>`;
-                return;
-            }
-            container.innerHTML = list.map(item => `
-                <div class="sticky-note p-3.5 rounded-xl border border-yellow-400 flex justify-between items-start gap-2">
-                    <div>
-                        <p class="text-xs text-amber-950 break-all">${item.content}</p>
-                        <span class="text-[10px] text-amber-950/50">${item.dateStr}</span>
-                    </div>
-                    <button onclick="deleteMsg(${item.id})" class="text-red-600 text-xs">Delete</button>
-                </div>
-            `).join('');
-        }
-
-        async function deleteMsg(id) {
-            let list = await getCloudMessages();
-            list = list.filter(i => i.id !== id);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-            loadMessages();
         }
 
         function copyShareLink() {
