@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Box</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.geekzu.org/css2?family=Caveat:wght@600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #d4c5b3 url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+        }
+
+        /* 极简拟物牛皮纸箱 */
+        .paper-box {
+            background: #c29b62;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.15) 100%),
+                url('https://www.transparenttextures.com/patterns/cardboard-flat.png');
+            box-shadow: 
+                0 25px 50px -12px rgba(67, 40, 16, 0.45),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                inset 0 -6px 12px rgba(0, 0, 0, 0.3);
+            border: 2px solid #a37d46;
+        }
+
+        /* 纸箱上覆盖的牛皮封箱胶带 */
+        .cardboard-tape {
+            background: rgba(212, 175, 118, 0.75);
+            background-image: url('https://www.transparenttextures.com/patterns/cardboard.png');
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.4);
+            backdrop-filter: blur(1px);
+        }
+
+        /* 投信缝隙 (Slot) */
+        .box-slit {
+            background: #2a1b0e;
+            box-shadow: 
+                inset 0 4px 8px rgba(0, 0, 0, 0.9),
+                0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        /* 拟物黄色便签纸 */
+        .sticky-note {
+            background: #f3edc1;
+            background-image: radial-gradient(circle at 100% 0%, rgba(0,0,0,0.05) 0%, transparent 50%);
+            box-shadow: 
+                0 10px 25px -5px rgba(0,0,0,0.25),
+                0 2px 4px -1px rgba(0,0,0,0.1);
+        }
+        .font-handwriting {
+            font-family: 'Caveat', 'Noto Sans SC', cursive;
+        }
+        @keyframes insertIntoBox {
+            0% {
+                transform: translateY(0) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            40% {
+                transform: translateY(-40px) scale(0.9) rotate(-3deg);
+                opacity: 0.95;
+            }
+            100% {
+                transform: translateY(180px) scale(0.1) rotate(6deg);
+                opacity: 0;
+            }
+        }
+
+        .anim-insert {
+            animation: insertIntoBox 0.85s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes boxDropShake {
+            0%, 100% { transform: translateY(0) scale(1); }
+            30% { transform: translateY(4px) scale(1.005); }
+            70% { transform: translateY(-2px) scale(0.998); }
+        }
+        .shake-box {
+            animation: boxDropShake 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between py-6 px-4 selection:bg-amber-200 selection:text-amber-900">
+    <header class="w-full max-w-md mx-auto flex justify-between items-center bg-amber-950/10 backdrop-blur-sm p-3 rounded-2xl border border-amber-900/10 mb-4">
+        <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span id="box-tag-display" class="text-xs font-mono font-bold text-amber-950 tracking-wider">BOX: DEFAULT</span>
+        </div>
+
+        <button onclick="copyShareLink()" class="px-3 py-1.5 bg-amber-900/80 hover:bg-amber-950 text-amber-100 text-xs font-medium rounded-xl shadow transition active:scale-95 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            <span>Copy Link</span>
+        </button>
+    </header>
+    <main class="w-full max-w-md mx-auto flex-grow flex flex-col justify-center">
+        <div id="cardboard-box" class="paper-box rounded-3xl p-6 relative overflow-hidden transition-transform duration-200">
+            <div class="cardboard-tape absolute -top-1 left-12 w-32 h-7 transform -rotate-2 border-b border-amber-900/20 pointer-events-none"></div>
+            <div class="cardboard-tape absolute -bottom-1 right-10 w-28 h-6 transform rotate-1 border-t border-amber-900/20 pointer-events-none"></div>
+
+            <!-- 投信缝隙 (Slot) -->
+            <div class="w-full mb-6 flex flex-col items-center">
+                <div class="w-56 h-3.5 box-slit rounded-full border border-amber-900/40 relative flex items-center justify-center">
+                    <div class="w-48 h-1 bg-black/60 rounded-full blur-[1px]"></div>
+                </div>
+                <span class="text-[10px] font-mono font-bold text-amber-950/60 uppercase tracking-widest mt-1.5">PARCEL SLOT / 投递口</span>
+            </div>
+            <div id="sticky-note-card" class="sticky-note rounded-2xl p-5 relative border border-yellow-300/60 transition-all duration-300">
+                <div class="text-xs font-mono text-amber-900/60 mb-2 flex justify-between items-center">
+                    <span>ANONYMOUS NOTE</span>
+                    <span id="char-count">0/300</span>
+                </div>
+
+                <textarea 
+                    id="question-input" 
+                    rows="4" 
+                    maxlength="300"
+                    placeholder="Ask me anything!" 
+                    class="w-full bg-transparent text-amber-950 placeholder-amber-900/40 font-medium text-sm focus:outline-none resize-none leading-relaxed"
+                    oninput="updateCharCount()"
+                ></textarea>
+
+                <div class="flex justify-end items-center mt-3 pt-2 border-t border-amber-900/10">
+                    <button 
+                        id="submit-btn"
+                        onclick="submitQuestion()" 
+                        class="px-5 py-2 bg-amber-900 hover:bg-amber-950 text-amber-50 text-xs font-bold rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
+                    >
+                        <span>Put into the Box</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="success-view" class="hidden py-8 flex flex-col items-center text-center space-y-3">
+                <div class="w-12 h-12 bg-amber-900/10 text-amber-900 rounded-full flex items-center justify-center border border-amber-900/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <p class="text-sm font-bold text-amber-950">Note has slid into the box!</p>
+                <button onclick="resetNoteForm()" class="text-xs font-bold text-amber-900 hover:underline underline-offset-4 pt-2">
+                    Write Another Note
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+    <footer class="w-full max-w-md mx-auto pt-6">
+        <div id="lock-panel" class="bg-amber-950/10 border border-amber-900/10 rounded-2xl p-3.5 flex items-center justify-between backdrop-blur-sm">
+            <div class="flex items-center space-x-2.5">
+                <div class="p-1.5 bg-amber-900/20 rounded-lg text-amber-950">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-amber-950">Inbox</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <input type="password" id="pass-input" placeholder="Password" class="w-20 px-2 py-1 bg-amber-100/60 border border-amber-900/20 rounded-lg text-xs text-amber-950 focus:outline-none">
+                <button onclick="unlockBoxInbox()" class="px-3 py-1 bg-amber-900 hover:bg-amber-950 text-amber-100 text-xs font-bold rounded-lg transition">Unlock</button>
+            </div>
+        </div>
+        <div id="unlocked-inbox" class="hidden space-y-3 mt-4">
+            <div class="flex justify-between items-center px-1">
+                <span class="text-xs font-bold text-amber-950">The box contains <span id="msg-count" class="font-mono text-amber-900 font-extrabold text-sm">0</span> notes</span>
+                <button onclick="loadQuestionsFromCloud()" class="text-[11px] font-bold text-amber-900/80 hover:text-amber-950 underline">Refresh Sync</button>
+            </div>
+            <div id="message-list" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+            </div>
+        </div>
+
+    </footer>
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-950 text-amber-100 text-xs font-medium px-4 py-2 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 border border-amber-800">
+        Link copied successfully
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAs-DemoBoxKeyForPublicUse01",
+            authDomain: "paper-box-app.firebaseapp.com",
+            projectId: "paper-box-app",
+            storageBucket: "paper-box-app.appspot.com",
+            messagingSenderId: "109823490",
+            appId: "1:109823490:web:987654321"
+        };
+
+        let db = null;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.firestore();
+        } catch(e) {
+            console.log("Cloud instance connecting...");
+        }
+
+        // 当前纸箱 ID (通过 URL 参数 ?box=xxxx 获取，默认为 mainbox)
+        const urlParams = new URLSearchParams(window.location.search);
+        const CURRENT_BOX_ID = urlParams.get('box') || 'mainbox';
+        const DEFAULT_PASS = '123456';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('box-tag-display').innerText = `BOX: ${CURRENT_BOX_ID.toUpperCase()}`;
+        });
+
+        function updateCharCount() {
+            const val = document.getElementById('question-input').value;
+            document.getElementById('char-count').innerText = `${val.length}/300`;
+        }
+
+        // 提交提问到云端
+        async function submitQuestion() {
+            const input = document.getElementById('question-input');
+            const text = input.value.trim();
+
+            if (!text) {
+                showToast('Write something on the note!');
+                return;
+            }
+
+            const stickyNote = document.getElementById('sticky-note-card');
+            const cardboardBox = document.getElementById('cardboard-box');
+            document.getElementById('submit-btn').disabled = true;
+
+            // 触发平滑塞入纸箱动画
+            stickyNote.classList.add('anim-insert');
+
+            try {
+                // 保存数据至云端数据库 (以当前 boxId 隔开)
+                if (db) {
+                    await db.collection('paper_boxes').add({
+                        boxId: CURRENT_BOX_ID,
+                        content: text,
+                        createdAt: new Date().getTime(),
+                        dateStr: new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    });
+                } else {
+                    // 降级离线备用
+                    saveToLocalStorage(text);
+                }
+            } catch (err) {
+                console.error("Cloud error, using local fallback", err);
+                saveToLocalStorage(text);
+            }
+
+            // 动画完成后逻辑
+            setTimeout(() => {
+                cardboardBox.classList.add('shake-box');
+                setTimeout(() => cardboardBox.classList.remove('shake-box'), 350);
+
+                stickyNote.classList.add('hidden');
+                stickyNote.classList.remove('anim-insert');
+                document.getElementById('success-view').classList.remove('hidden');
+
+                // 若收件箱已解锁则同步刷出
+                if (!document.getElementById('unlocked-inbox').classList.contains('hidden')) {
+                    loadQuestionsFromCloud();
+                }
+            }, 800);
+        }
+
+        function resetNoteForm() {
+            document.getElementById('question-input').value = '';
+            updateCharCount();
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('success-view').classList.add('hidden');
+            document.getElementById('sticky-note-card').classList.remove('hidden');
+        }
+
+        // 解锁收件箱
+        function unlockBoxInbox() {
+            const pass = document.getElementById('pass-input').value;
+            if (pass === DEFAULT_PASS) {
+                document.getElementById('lock-panel').classList.add('hidden');
+                document.getElementById('unlocked-inbox').classList.remove('hidden');
+                loadQuestionsFromCloud();
+            } else {
+                showToast('Incorrect password! The default unlock password is 123456');
+            }
+        }
+
+        // 从云端加载当前纸箱提问
+        async function loadQuestionsFromCloud() {
+            const container = document.getElementById('message-list');
+            container.innerHTML = `<div class="text-center py-4 text-xs font-bold text-amber-950/60">Searching for notes in the box...</div>`;
+
+            let list = [];
+            try {
+                if (db) {
+                    const snapshot = await db.collection('paper_boxes')
+                        .where('boxId', '==', CURRENT_BOX_ID)
+                        .get();
+                    snapshot.forEach(doc => {
+                        list.push({ id: doc.id, ...doc.data() });
+                    });
+                    list.sort((a,b) => b.createdAt - a.createdAt);
+                } else {
+                    list = getFromLocalStorage();
+                }
+            } catch(e) {
+                list = getFromLocalStorage();
+            }
+
+            document.getElementById('msg-count').innerText = list.length;
+
+            if (list.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-amber-900/60 font-bold">The box is empty, no notes have been delivered yet</div>`;
+                return;
+            }
+
+            container.innerHTML = list.map(item => `
+                <div class="sticky-note p-3.5 rounded-xl border border-yellow-400/80 flex justify-between items-start gap-2 shadow-sm transform hover:-rotate-1 transition">
+                    <div class="space-y-1">
+                        <p class="text-xs text-amber-950 font-medium leading-relaxed break-all">${escapeHtml(item.content)}</p>
+                        <span class="text-[10px] font-mono text-amber-900/50 block">${item.dateStr || ''}</span>
+                    </div>
+                    <button onclick="deleteQuestion('${item.id}')" class="text-amber-900/40 hover:text-red-700 transition p-0.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 删除单条提问
+        async function deleteQuestion(docId) {
+            try {
+                if (db && typeof docId === 'string' && docId.length > 10) {
+                    await db.collection('paper_boxes').doc(docId).delete();
+                } else {
+                    deleteFromLocalStorage(docId);
+                }
+            } catch(e) {
+                deleteFromLocalStorage(docId);
+            }
+            loadQuestionsFromCloud();
+        }
+
+        // 复制专属提问链接
+        function copyShareLink() {
+            const baseUrl = window.location.href.split('?')[0];
+            // 自动为你生成/携带当前纸箱号
+            const shareUrl = `${baseUrl}?box=${CURRENT_BOX_ID}`;
+
+            const textarea = document.createElement('textarea');
+            textarea.value = shareUrl;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showToast('Link copied successfully');
+        }
+
+        // LocalStorage 本地备用方案
+        function saveToLocalStorage(content) {
+            const list = JSON.parse(localStorage.getItem(`paperbox_${CURRENT_BOX_ID}`) || '[]');
+            list.unshift({
+                id: Date.now(),
+                content: content,
+                createdAt: Date.now(),
+                dateStr: new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            });
+            localStorage.setItem(`paperbox_${CURRENT_BOX_ID}`, JSON.stringify(list));
+        }
+
+        function getFromLocalStorage() {
+            return JSON.parse(localStorage.getItem(`paperbox_${CURRENT_BOX_ID}`) || '[]');
+        }
+
+        function deleteFromLocalStorage(id) {
+            let list = getFromLocalStorage();
+            list = list.filter(item => item.id != id);
+            localStorage.setItem(`paperbox_${CURRENT_BOX_ID}`, JSON.stringify(list));
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2200);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[m]);
+        }
+    </script>
+</body>
+</html>
